@@ -158,6 +158,11 @@ export class Player {
       this.state.isSprinting = this.input.isActionActive('sprint');
       const speed = this.stats.moveSpeed * (this.state.isSprinting ? this.stats.sprintMultiplier : 1);
       
+      // Debug sprint status
+      if (this.state.isSprinting) {
+        console.log('Player is sprinting at speed:', speed);
+      }
+      
       // Convert to a world space direction based on camera orientation
       const cameraDirection = new THREE.Vector3();
       this.camera.getWorldDirection(cameraDirection);
@@ -177,6 +182,35 @@ export class Player {
       // Apply the movement force to the physics body
       this.body.velocity.x = moveVector.x;
       this.body.velocity.z = moveVector.z;
+      
+      // Visual effect for sprint - add blur lines behind player
+      if (this.state.isSprinting && Math.random() > 0.7) { // Only add particles occasionally
+        const lineGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.5);
+        const lineMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0x3333ff,
+          transparent: true,
+          opacity: 0.3
+        });
+        const line = new THREE.Mesh(lineGeometry, lineMaterial);
+        
+        // Position slightly behind player in movement direction
+        const linePos = this.mesh.position.clone();
+        linePos.y += Math.random() * 1.5; // Random height
+        
+        // Position based on movement direction
+        linePos.x -= moveVector.x * (Math.random() * 0.5 + 0.5);
+        linePos.z -= moveVector.z * (Math.random() * 0.5 + 0.5);
+        
+        line.position.copy(linePos);
+        
+        // Add to scene
+        this.engine.scene.add(line);
+        
+        // Remove after short time
+        setTimeout(() => {
+          this.engine.scene.remove(line);
+        }, 300);
+      }
       
       // Rotate player to face movement direction
       if (moveVector.length() > 0.1) {
@@ -292,13 +326,15 @@ export class Player {
     });
     
     // Apply impulse in the direction the player is facing
-    const throwStrength = 10;
+    const throwStrength = 12;
     const impulse = playerDirection.multiplyScalar(throwStrength);
-    impulse.y = 2; // Add some upward force
+    impulse.y = 3; // Add some upward force for a nice arc
     ballBody.applyImpulse(
       new CANNON.Vec3(impulse.x, impulse.y, impulse.z),
       new CANNON.Vec3(0, 0, 0)
     );
+    
+    console.log('Ball thrown with strength:', throwStrength);
     
     // Add body to world
     this.engine.world.addBody(ballBody);
@@ -360,45 +396,46 @@ export class Player {
         beamPos.z + direction.z * 15
       );
       
-      // Perform raycast
-      this.engine.world.raycastClosest(start, end, {}, (result) => {
-        if (result.hasHit) {
-          console.log('Photon Blaster hit something!');
+      // Perform raycast manually instead of using callback
+      const result = new CANNON.RaycastResult();
+      this.engine.world.rayTest(start, end, result);
+      
+      if (result.hasHit) {
+        console.log('Photon Blaster hit something!');
+        
+        // If we hit a body that isn't the player's, "freeze" it
+        if (result.body !== this.body) {
+          // Keep the original velocity to restore later
+          const originalVel = result.body.velocity.clone();
+          const originalAngVel = result.body.angularVelocity.clone();
           
-          // If we hit a body that isn't the player's, "freeze" it
-          if (result.body !== this.body) {
-            // Keep the original velocity to restore later
-            const originalVel = result.body.velocity.clone();
-            const originalAngVel = result.body.angularVelocity.clone();
+          // "Freeze" the body by setting its velocity to zero
+          result.body.velocity.set(0, 0, 0);
+          result.body.angularVelocity.set(0, 0, 0);
+          
+          // Change material to a "frozen" look
+          if (result.body.userData && result.body.userData.mesh) {
+            const mesh = result.body.userData.mesh;
+            const originalMaterial = mesh.material;
+            mesh.material = new THREE.MeshBasicMaterial({
+              color: 0x00ffff,
+              transparent: true,
+              opacity: 0.8
+            });
             
-            // "Freeze" the body by setting its velocity to zero
-            result.body.velocity.set(0, 0, 0);
-            result.body.angularVelocity.set(0, 0, 0);
-            
-            // Change material to a "frozen" look
-            if (result.body.userData && result.body.userData.mesh) {
-              const mesh = result.body.userData.mesh;
-              const originalMaterial = mesh.material;
-              mesh.material = new THREE.MeshBasicMaterial({
-                color: 0x00ffff,
-                transparent: true,
-                opacity: 0.8
-              });
+            // Unfreeze after 3 seconds
+            setTimeout(() => {
+              result.body.velocity.copy(originalVel);
+              result.body.angularVelocity.copy(originalAngVel);
               
-              // Unfreeze after 3 seconds
-              setTimeout(() => {
-                result.body.velocity.copy(originalVel);
-                result.body.angularVelocity.copy(originalAngVel);
-                
-                // Restore original material
-                mesh.material = originalMaterial;
-                
-                console.log('Target unfrozen');
-              }, 3000);
-            }
+              // Restore original material
+              mesh.material = originalMaterial;
+              
+              console.log('Target unfrozen');
+            }, 3000);
           }
         }
-      });
+      }
       
       // Remove beam after 0.5 seconds
       setTimeout(() => {

@@ -5,14 +5,13 @@
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 
-## Game Controls
+## Game Controls (Keyboard-Only)
 - **Movement**: WASD or Arrow Keys
-- **Camera**: Mouse
 - **Jump**: Space bar
 - **Sprint**: Shift
-- **Pass/Kick Ball**: Left Mouse Button
-- **Tackle/Photon Blaster**: Right Mouse Button
-- **Interact/Pickup**: E key
+- **Pass/Kick Ball**: E key
+- **Photon Blaster**: Q key
+- **Interact/Pickup**: F key
 - **Pause Game**: Escape key
 
 ## Implementation Plan (Current: Phase 2-3)

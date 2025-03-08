@@ -26,15 +26,13 @@ export class InputManager {
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
     window.addEventListener('keyup', (event) => this.onKeyUp(event));
     
-    // Mouse event listeners
-    window.addEventListener('mousemove', (event) => this.onMouseMove(event));
-    window.addEventListener('mousedown', (event) => this.onMouseDown(event));
-    window.addEventListener('mouseup', (event) => this.onMouseUp(event));
-    
-    // Prevent context menu on right click
-    window.addEventListener('contextmenu', (event) => event.preventDefault());
-    
-    console.log('Input manager initialized');
+    console.log('Input manager initialized with keyboard-only controls');
+    console.log('Movement: WASD or Arrow Keys');
+    console.log('Jump: Space');
+    console.log('Sprint: Shift');
+    console.log('Pass/Throw: E');
+    console.log('Photon Blaster: Q');
+    console.log('Interact: F');
   }
   
   onKeyDown(event) {
@@ -66,42 +64,7 @@ export class InputManager {
     }
   }
   
-  onMouseMove(event) {
-    this.mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  }
-  
-  onMouseDown(event) {
-    switch (event.button) {
-      case 0: // Left button
-        this.mouseButtons.left = true;
-        this.actions.pass = true;
-        break;
-      case 1: // Middle button
-        this.mouseButtons.middle = true;
-        break;
-      case 2: // Right button
-        this.mouseButtons.right = true;
-        this.actions.tackle = true;
-        break;
-    }
-  }
-  
-  onMouseUp(event) {
-    switch (event.button) {
-      case 0: // Left button
-        this.mouseButtons.left = false;
-        this.actions.pass = false;
-        break;
-      case 1: // Middle button
-        this.mouseButtons.middle = false;
-        break;
-      case 2: // Right button
-        this.mouseButtons.right = false;
-        this.actions.tackle = false;
-        break;
-    }
-  }
+  // We've removed mouse handling as we're using keyboard-only controls
   
   mapKeysToActions() {
     // WASD movement
@@ -110,14 +73,20 @@ export class InputManager {
     this.actions.moveLeft = this.keys['KeyA'] || this.keys['ArrowLeft'] || false;
     this.actions.moveRight = this.keys['KeyD'] || this.keys['ArrowRight'] || false;
     
-    // Other actions
-    this.actions.jump = this.keys['Space'] || this.keys['SpaceBar'] || false;
+    // Other actions - keyboard only controls
+    this.actions.jump = this.keys['Space'] || false;
     this.actions.sprint = this.keys['ShiftLeft'] || this.keys['ShiftRight'] || false;
-    this.actions.interact = this.keys['KeyE'] || false;
+    this.actions.pass = this.keys['KeyE'] || false; // Pass/throw with E
+    this.actions.tackle = this.keys['KeyQ'] || false; // Photon blaster with Q
+    this.actions.interact = this.keys['KeyF'] || false; // Interact with F
     
     // Debug action states
     if (this.actions.jump) {
       console.log('Jump action is active');
+    }
+    
+    if (this.actions.sprint) {
+      console.log('Sprint action is active');
     }
   }
   
