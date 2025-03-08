@@ -44,7 +44,13 @@ export class InputManager {
     this.mapKeysToActions();
     
     // Debug key press
-    console.log('Key pressed:', event.code);
+    console.log('Key pressed:', event.code, 'Key Name:', event.key);
+    
+    // Additional spacebar debugging
+    if (event.code === 'Space') {
+      console.log('Space key pressed!');
+      this.actions.jump = true;
+    }
   }
   
   onKeyUp(event) {
@@ -52,6 +58,12 @@ export class InputManager {
     
     // Map keys to actions
     this.mapKeysToActions();
+    
+    // Additional spacebar debugging
+    if (event.code === 'Space') {
+      console.log('Space key released!');
+      this.actions.jump = false;
+    }
   }
   
   onMouseMove(event) {
@@ -99,9 +111,14 @@ export class InputManager {
     this.actions.moveRight = this.keys['KeyD'] || this.keys['ArrowRight'] || false;
     
     // Other actions
-    this.actions.jump = this.keys['Space'] || false;
+    this.actions.jump = this.keys['Space'] || this.keys['SpaceBar'] || false;
     this.actions.sprint = this.keys['ShiftLeft'] || this.keys['ShiftRight'] || false;
     this.actions.interact = this.keys['KeyE'] || false;
+    
+    // Debug action states
+    if (this.actions.jump) {
+      console.log('Jump action is active');
+    }
   }
   
   update() {

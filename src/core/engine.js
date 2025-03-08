@@ -28,6 +28,9 @@ export class Engine {
     
     // Container element
     this.container = document.getElementById('game-container');
+    
+    // Update list for objects that need to be updated each frame
+    this.updateList = [];
   }
   
   async init() {
@@ -139,6 +142,24 @@ export class Engine {
     // Cap the delta time to prevent huge jumps after pausing/lagging
     const maxDeltaTime = 1/30; // max 30 fps physics
     this.world.step(Math.min(deltaTime, maxDeltaTime));
+    
+    // Update all objects in the update list
+    for (const updateFunc of this.updateList) {
+      updateFunc(deltaTime);
+    }
+  }
+  
+  // Add a function to the update list
+  addToUpdateList(updateFunc) {
+    this.updateList.push(updateFunc);
+  }
+  
+  // Remove a function from the update list
+  removeFromUpdateList(updateFunc) {
+    const index = this.updateList.indexOf(updateFunc);
+    if (index !== -1) {
+      this.updateList.splice(index, 1);
+    }
   }
   
   // Helper function to create a skybox
