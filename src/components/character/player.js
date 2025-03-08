@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
+import { Zorgonaut } from './zorgonaut.js';
+
 export class Player {
   constructor(engine, inputManager) {
     this.engine = engine;
@@ -364,6 +366,9 @@ export class Player {
   usePhotonBlaster() {
     const now = performance.now() / 1000;
     if (now - this.abilities.photonBlaster.lastUsed > this.abilities.photonBlaster.cooldown) {
+      // Set photon blaster as active
+      this.abilities.photonBlaster.isActive = true;
+      
       // Get player's forward direction
       const direction = new THREE.Vector3(0, 0, -1);
       direction.applyQuaternion(this.mesh.quaternion);
@@ -437,9 +442,10 @@ export class Player {
         }
       }
       
-      // Remove beam after 0.5 seconds
+      // Remove beam after 0.5 seconds and set photon blaster to inactive
       setTimeout(() => {
         this.engine.scene.remove(beam);
+        this.abilities.photonBlaster.isActive = false;
       }, 500);
       
       console.log('Player used Photon Blaster');

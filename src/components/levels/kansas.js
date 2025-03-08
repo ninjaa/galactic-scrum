@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { Zorgonaut } from '../character/zorgonaut.js';
 
 export class KansasLevel {
   constructor(engine) {
@@ -42,8 +43,7 @@ export class KansasLevel {
     // Create goal zone
     this.createGoalZone();
     
-    // Create enemies
-    this.createEnemies();
+    // Enemies will be created after player is added
     
     console.log('Kansas level loaded successfully!');
     return true;
@@ -148,25 +148,42 @@ export class KansasLevel {
     // No physics body needed for the goal zone, just use its bounding box for detection
   }
   
-  createEnemies() {
-    // Create some Zorgonaut defenders
-    // For now just adding placeholder enemy positions
+  async createEnemies() {
+    // Create Zorgonaut defenders
+    if (!this.player) {
+      console.warn('Cannot create enemies without player reference');
+      return;
+    }
+    
+    // Define enemy positions around the level
     const enemyPositions = [
-      { x: 10, y: 1, z: 0 },
-      { x: 20, y: 1, z: -10 },
-      { x: 30, y: 1, z: 5 }
+      { x: 10, y: 2, z: 0 },      // First enemy near the beginning
+      { x: 20, y: 2, z: -10 },    // Second enemy to the side
+      { x: 30, y: 2, z: 5 },      // Third enemy guarding the goal
+      { x: 0, y: 2, z: 15 },      // Additional enemy
+      { x: -15, y: 2, z: -20 }    // Enemy near crop circles
     ];
     
-    // We'll implement proper enemy logic in a separate class later
-    console.log('Enemy positions defined:', enemyPositions);
+    // Create Zorgonaut enemies
+    for (const pos of enemyPositions) {
+      const position = new THREE.Vector3(pos.x, pos.y, pos.z);
+      const zorgonaut = new Zorgonaut(this.engine, position, this.player);
+      await zorgonaut.init();
+      this.enemies.push(zorgonaut);
+    }
+    
+    console.log(`Created ${this.enemies.length} Zorgonaut enemies`);
   }
   
-  addPlayer(player) {
+  async addPlayer(player) {
     this.player = player;
     
     // Position player at the start of the level
     player.body.position.set(-40, 2, 0);
     player.mesh.position.copy(player.body.position);
+    
+    // Now that we have a player reference, create enemies
+    await this.createEnemies();
   }
   
   update(deltaTime) {
@@ -183,7 +200,51 @@ export class KansasLevel {
       }
     }
     
-    // Update enemy positions and behavior
-    // (to be implemented later)
+    // Update enemies
+    for (const enemy of this.enemies) {
+      enemy.update(deltaTime);
+    }
+    
+    // Check for collisions between photon blaster and enemies
+    this.checkPhotonBlasterHits();
+  }
+  
+  // Check if the player's photon blaster hit any enemies
+  checkPhotonBlasterHits() {
+    // If player doesn't have an active photon blast, skip check
+    if (!this.player || !this.player.abilities.photonBlaster.isActive) {
+      return;
+    }
+    
+    // Get player forward direction for beam
+    const playerDirection = new THREE.Vector3(0, 0, -1);
+    playerDirection.applyQuaternion(this.player.mesh.quaternion);
+    playerDirection.normalize();
+    
+    // Cast a ray from player position
+    const raycaster = new THREE.Raycaster(
+      this.player.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)),
+      playerDirection,
+      0,
+      15
+    );
+    
+    // Check for intersections with enemy meshes
+    for (const enemy of this.enemies) {
+      if (enemy.state.isStunned || enemy.state.isDead) continue;
+      
+      // Using a simple distance/direction check 
+      const toEnemy = new THREE.Vector3();
+      toEnemy.subVectors(enemy.mesh.position, this.player.mesh.position);
+      
+      // Check if enemy is in front of player
+      const angleBetween = playerDirection.angleTo(toEnemy.normalize());
+      
+      // If enemy is roughly in front of player and within range
+      if (angleBetween < 0.3 && toEnemy.length() < 15) {
+        console.log('Photon Blaster hit Zorgonaut!');
+        enemy.getStunned();
+      }
+    }
   }
 }
