@@ -31,7 +31,9 @@ export class Player {
       isSprinting: false,
       hasBall: false,
       lastJumpTime: 0,
-      jumpCooldown: 0.3 // seconds
+      lastGroundedTime: 0,
+      jumpCooldown: 0.3, // seconds
+      lastGroundedState: false
     };
     
     // Abilities
@@ -93,12 +95,39 @@ export class Player {
     // Setup contact detection for ground check
     this.body.addEventListener('collide', (event) => {
       // Check if collision is with ground or other objects
-      // For now, simply set grounded to true on any collision
-      this.state.isGrounded = true;
+      // For this check, we'll determine if the contact normal is pointing roughly upwards
+      const contact = event.contact;
+      
+      // The contact normal points from body1 to body2
+      const normalWorldOnA = new CANNON.Vec3();
+      contact.ni.copy(normalWorldOnA);
+      
+      // If this body is the first one in the collision
+      if (this.body.id === contact.bi.id) {
+        // The normal is already pointing from this body, so a positive y means "ground"
+        if (normalWorldOnA.y > 0.5) {
+          this.state.isGrounded = true;
+          this.state.lastGroundedTime = performance.now() / 1000;
+        }
+      } else {
+        // Otherwise, the normal is pointing toward this body, so negate it
+        normalWorldOnA.negate(normalWorldOnA);
+        if (normalWorldOnA.y > 0.5) {
+          this.state.isGrounded = true;
+          this.state.lastGroundedTime = performance.now() / 1000;
+        }
+      }
     });
   }
   
   update(deltaTime) {
+    // Reset grounded state each frame - will be set to true by collision callbacks if needed
+    // Set a small grace period so jumping feels more responsive
+    const now = performance.now() / 1000;
+    if (now - this.state.lastGroundedTime > 0.1) {
+      this.state.isGrounded = false;
+    }
+    
     // Handle player input
     this.handleInput(deltaTime);
     
@@ -111,6 +140,12 @@ export class Player {
     
     // Update third-person camera position
     this.updateCamera();
+    
+    // Debug output
+    if (this.state.isGrounded !== this.state.lastGroundedState) {
+      this.state.lastGroundedState = this.state.isGrounded;
+      console.log('Player grounded state:', this.state.isGrounded);
+    }
   }
   
   handleInput(deltaTime) {
@@ -146,15 +181,19 @@ export class Player {
       // Rotate player to face movement direction
       if (moveVector.length() > 0.1) {
         const targetRotation = Math.atan2(moveVector.x, moveVector.z);
-        const currentRotation = this.body.quaternion.toEuler().y;
+        
+        // Get current rotation using a temporary Euler vector
+        const euler = new CANNON.Vec3();
+        this.body.quaternion.toEuler(euler);
+        const currentRotation = euler.y;
         
         // Smoothly rotate towards the target direction
         const rotationSpeed = 10;
         let newRotation = currentRotation + (targetRotation - currentRotation) * Math.min(rotationSpeed * deltaTime, 1);
         
         // Apply rotation to the physics body
-        const euler = new CANNON.Vec3(0, newRotation, 0);
-        this.body.quaternion.setFromEuler(euler);
+        euler.set(0, newRotation, 0);
+        this.body.quaternion.setFromEuler(euler.x, euler.y, euler.z);
       }
     } else {
       // If no movement input, keep vertical velocity but stop horizontal movement

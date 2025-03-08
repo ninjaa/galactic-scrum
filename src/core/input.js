@@ -42,6 +42,9 @@ export class InputManager {
     
     // Map keys to actions
     this.mapKeysToActions();
+    
+    // Debug key press
+    console.log('Key pressed:', event.code);
   }
   
   onKeyUp(event) {
